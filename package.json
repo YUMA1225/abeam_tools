@@ -1,9 +1,9 @@
 {
-  "name": "seo-checker",
+  "name": "llmo-checker",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -12,6 +12,9 @@
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"
+  },
+  "overrides": {
+    "postcss": "8.5.14"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
