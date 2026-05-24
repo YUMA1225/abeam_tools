@@ -7,6 +7,12 @@ const tools = [
     description: "SEO・OGP・構造化データ・MEO・LLMOをまとめて診断します。",
     status: "公開準備中",
   },
+  {
+    name: "PDF分割ツール",
+    href: "/pdf-splitter",
+    description: "PDFを1ページごと、またはプレビューを見ながら指定位置で分割します。",
+    status: "ブラウザ内処理",
+  },
 ];
 
 export default function ToolsHome() {
@@ -34,10 +40,19 @@ export default function ToolsHome() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="grid size-11 place-items-center rounded-xl bg-gradient-to-br from-purple-700 via-indigo-600 to-cyan-500 text-white shadow-md shadow-indigo-900/20">
-                  <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="7" />
-                    <path d="m20 20-3.5-3.5" />
-                  </svg>
+                  {tool.href === "/pdf-splitter" ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="6" cy="7" r="3" />
+                      <circle cx="6" cy="17" r="3" />
+                      <path d="M8.6 8.6 19 19" />
+                      <path d="M8.6 15.4 19 5" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="11" cy="11" r="7" />
+                      <path d="m20 20-3.5-3.5" />
+                    </svg>
+                  )}
                 </div>
                 <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-700">{tool.status}</span>
               </div>
