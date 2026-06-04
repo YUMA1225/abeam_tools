@@ -438,7 +438,43 @@ function getParagraphCount(html: string): number {
 }
 
 function hasAboutLink(html: string): boolean {
-  return /href=["'][^"']*(about|company|profile|contact|会社概要|お問い合わせ|運営者)[^"']*["']/i.test(html);
+  const signals = [
+    "about",
+    "company",
+    "corporate",
+    "profile",
+    "contact",
+    "inquiry",
+    "info",
+    "会社概要",
+    "会社情報",
+    "企業情報",
+    "会社案内",
+    "運営会社",
+    "運営者",
+    "運営者情報",
+    "著者",
+    "著者情報",
+    "プロフィール",
+    "お問い合わせ",
+    "お問合せ",
+    "お問い合せ",
+    "問合せ",
+    "問い合わせ",
+    "ご相談",
+  ];
+  const pattern = new RegExp(signals.map(escapeRegExp).join("|"), "i");
+  const links = Array.from(html.matchAll(/<a\b[^>]*>([\s\S]*?)<\/a>/gi));
+  return links.some((match) => {
+    const tag = match[0];
+    const href = decodeText(getAttr(tag, "href")).trim();
+    const text = decodeText(stripTags(match[1])).trim().replace(/\s+/g, "");
+    return pattern.test(`${href} ${text}`);
+  });
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function countDefinitions(html: string): number {
