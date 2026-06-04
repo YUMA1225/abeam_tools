@@ -560,51 +560,69 @@ export default function PdfSplitterPage() {
                   <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">ページ数が多いため、プレビュー描画に時間がかかる場合があります。</p>
                 )}
                 <div className="mt-3 grid min-h-0 flex-1 grid-cols-3 content-start gap-x-12 gap-y-6 overflow-auto pr-12">
-                  {pages.map((pageNumber) => (
-                    <div key={pageNumber} className="group relative">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPage(pageNumber)}
-                        className={`relative flex w-full flex-col items-center gap-2 bg-sky-50/70 px-3 py-3 text-left transition ${
-                          selectedPage === pageNumber
-                            ? "bg-sky-100 shadow-[inset_0_0_0_2px_rgba(20,184,166,0.35)]"
-                            : "hover:bg-sky-50"
-                        }`}
-                      >
-                        <PdfCanvas pdfDocument={pdfDocument} pageNumber={pageNumber} targetWidth={150} className="max-w-full border border-dashed border-slate-300 bg-white shadow-sm" />
-                        <span className="text-sm font-black leading-none text-slate-500">{pageNumber}</span>
-                      </button>
-                      {mode === "breaks" && pageNumber < pageCount && (
+                  {pages.map((pageNumber) => {
+                    const range = findRangeForPage(ranges, pageNumber);
+                    const checked = range ? !excludedRangeKeys.has(rangeKey(range)) : false;
+                    return (
+                      <div key={pageNumber} className="group relative">
+                        {range && (
+                          <label
+                            className="absolute right-4 top-4 z-20 grid size-6 cursor-pointer place-items-center"
+                            title={checked ? `${rangeLabel(range)}を出力しない` : `${rangeLabel(range)}を出力する`}
+                            aria-label={checked ? `${rangeLabel(range)}を出力しない` : `${rangeLabel(range)}を出力する`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleRangeOutput(range)}
+                              className="size-5 accent-teal-700 drop-shadow-sm"
+                            />
+                          </label>
+                        )}
                         <button
                           type="button"
-                          onClick={() => toggleBreak(pageNumber)}
-                          className={`group/split absolute bottom-0 left-full top-0 z-10 flex w-12 items-center justify-center transition ${
-                            mode === "breaks" && breaks.has(pageNumber)
-                              ? "text-teal-600 opacity-100 hover:bg-teal-50/70 hover:text-teal-800"
-                              : "text-sky-400 opacity-100 hover:bg-sky-100/60 hover:text-teal-600"
-                          }`}
-                          aria-label={breaks.has(pageNumber) ? `Page ${pageNumber} の後の区切りを解除` : `Page ${pageNumber} の後で区切る`}
+                          onClick={() => setSelectedPage(pageNumber)}
+                          className={`relative flex w-full flex-col items-center gap-2 bg-sky-50/70 px-3 py-3 text-left transition ${
+                            selectedPage === pageNumber
+                              ? "bg-sky-100 shadow-[inset_0_0_0_2px_rgba(20,184,166,0.35)]"
+                              : "hover:bg-sky-50"
+                          } ${checked ? "" : "opacity-55"}`}
                         >
-                          <span
-                            className={`absolute bottom-0 top-0 border-l-2 ${
-                              mode === "breaks" && breaks.has(pageNumber)
-                                ? "border-teal-600 transition group-hover/split:border-teal-800"
-                                : "border-dashed border-sky-300 transition group-hover/split:border-solid group-hover/split:border-teal-500"
-                            }`}
-                          />
-                          <span
-                            className={`relative grid size-7 place-items-center rounded-full border shadow-sm transition ${
-                              mode === "breaks" && breaks.has(pageNumber)
-                                ? "border-teal-600 bg-teal-600 text-white group-hover/split:border-teal-800 group-hover/split:bg-teal-800"
-                                : "border-sky-300 bg-sky-300 text-white group-hover/split:border-teal-500 group-hover/split:bg-teal-500"
-                            }`}
-                          >
-                            <ScissorsIcon className="size-3.5" />
-                          </span>
+                          <PdfCanvas pdfDocument={pdfDocument} pageNumber={pageNumber} targetWidth={150} className="max-w-full border border-dashed border-slate-300 bg-white shadow-sm" />
+                          <span className="text-sm font-black leading-none text-slate-500">{pageNumber}</span>
                         </button>
-                      )}
-                    </div>
-                  ))}
+                        {mode === "breaks" && pageNumber < pageCount && (
+                          <button
+                            type="button"
+                            onClick={() => toggleBreak(pageNumber)}
+                            className={`group/split absolute bottom-0 left-full top-0 z-10 flex w-12 items-center justify-center transition ${
+                              mode === "breaks" && breaks.has(pageNumber)
+                                ? "text-teal-600 opacity-100 hover:bg-teal-50/70 hover:text-teal-800"
+                                : "text-sky-400 opacity-100 hover:bg-sky-100/60 hover:text-teal-600"
+                            }`}
+                            aria-label={breaks.has(pageNumber) ? `Page ${pageNumber} の後の区切りを解除` : `Page ${pageNumber} の後で区切る`}
+                          >
+                            <span
+                              className={`absolute bottom-0 top-0 border-l-2 ${
+                                mode === "breaks" && breaks.has(pageNumber)
+                                  ? "border-teal-600 transition group-hover/split:border-teal-800"
+                                  : "border-dashed border-sky-300 transition group-hover/split:border-solid group-hover/split:border-teal-500"
+                              }`}
+                            />
+                            <span
+                              className={`relative grid size-7 place-items-center rounded-full border shadow-sm transition ${
+                                mode === "breaks" && breaks.has(pageNumber)
+                                  ? "border-teal-600 bg-teal-600 text-white group-hover/split:border-teal-800 group-hover/split:bg-teal-800"
+                                  : "border-sky-300 bg-sky-300 text-white group-hover/split:border-teal-500 group-hover/split:bg-teal-500"
+                              }`}
+                            >
+                              <ScissorsIcon className="size-3.5" />
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -753,6 +771,10 @@ function rangeKey(range: Range) {
 
 function rangeLabel(range: Range) {
   return range.start === range.end ? `${range.start}ページ` : `${range.start}-${range.end}ページ`;
+}
+
+function findRangeForPage(ranges: Range[], pageNumber: number) {
+  return ranges.find((range) => range.start <= pageNumber && pageNumber <= range.end);
 }
 
 function baseName(fileName: string) {
