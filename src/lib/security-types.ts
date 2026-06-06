@@ -10,7 +10,7 @@ export type SecurityCheck = {
   weight: number;
 };
 
-export type SecurityCategoryKey = "ssl" | "browser" | "cms" | "server" | "formDomain";
+export type SecurityCategoryKey = "ssl" | "browser" | "cms" | "server" | "client" | "formDomain";
 
 export type ProbeResult = {
   id: string;
@@ -39,6 +39,13 @@ export type SecurityReport = {
   contentType: string;
   score: number;
   grade: string;
+  coverage: {
+    publicPathsChecked: number;
+    unavailablePaths: number;
+    clientScriptsChecked: number;
+    sourceMapsChecked: number;
+    optionsChecked: boolean;
+  };
   categories: SecurityCategory[];
 };
 

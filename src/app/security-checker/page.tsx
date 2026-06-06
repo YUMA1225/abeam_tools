@@ -5,13 +5,14 @@ import type { FormEvent, ReactNode } from "react";
 import type { CheckStatus, SecurityAnalyzeResponse, SecurityCategory, SecurityCategoryKey, SecurityCheck, SecurityReport } from "../../lib/security-types";
 
 const sampleUrl = "https://abeam.tech/";
-const categoryOrder: SecurityCategoryKey[] = ["ssl", "browser", "cms", "server", "formDomain"];
+const categoryOrder: SecurityCategoryKey[] = ["ssl", "browser", "cms", "server", "client", "formDomain"];
 
 const categoryShortLabel: Record<SecurityCategoryKey, string> = {
-  ssl: "SSL",
+  ssl: "HTTPS",
   browser: "HEAD",
   cms: "CMS",
   server: "SRV",
+  client: "CODE",
   formDomain: "FORM",
 };
 
@@ -20,6 +21,7 @@ const categoryIcon: Record<SecurityCategoryKey, ReactNode> = {
   browser: <SettingsIcon />,
   cms: <FileTextIcon />,
   server: <NodesIcon />,
+  client: <CodeIcon />,
   formDomain: <MegaphoneIcon />,
 };
 
@@ -95,13 +97,16 @@ export default function Home() {
         <div className="mt-3 max-w-[860px] space-y-2 text-xs text-slate-500">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <BoltIcon className="size-3.5 text-indigo-500" />
-            <span>公開ページを取得し、外部から確認できる基本的なセキュリティ設定を診断します。内部URLは使用できません。</span>
+            <span>安全メソッド（GET・HEAD・OPTIONS）のみ使用し、代表パスとJavaScriptの追加確認は最大52件・同時3件までに制限します。</span>
             <span>|</span>
             <button type="button" onClick={() => setUrl(sampleUrl)} className="text-teal-600 underline underline-offset-2">
               サンプルURLで試す
             </button>
           </p>
-          <p>※ ログイン試行や深い探索は行わない簡易診断です。対象外の項目は減点なしで扱います。</p>
+          <p>※ GETは入力URLと同一オリジンの既知パスだけを対象とし、取得量を制限します。HEADはHTTP転送、OPTIONSはトップページの許可メソッド確認だけに利用します。</p>
+          <p>※ POST・PUT・PATCH・DELETE・TRACE、ログイン、フォーム送信、パラメータ改変、総当たり、認証回避、負荷試験は一切行いません。</p>
+          <p>※ 自身が管理するサイト、または診断について明示的な許可を得たサイトにのみ利用してください。</p>
+          <p>※ TLS暗号方式・証明書チェーン、認証後画面、サーバー内部、業務ロジックは対象外です。結果は脆弱性の確定や安全保証ではありません。</p>
         </div>
       </section>
 
@@ -133,10 +138,10 @@ function Header() {
         </div>
         <div>
           <h1 className="text-xl font-black tracking-normal">セキュリティ診断ツール</h1>
-          <p className="mt-1 text-xs text-slate-500">by Abeam Tech・SSL/ヘッダー/CMS/公開情報/フォームを診断</p>
+          <p className="mt-1 text-xs text-slate-500">by Abeam Tech・安全メソッド限定の公開設定診断</p>
         </div>
       </div>
-      <span className="rounded-full bg-gradient-to-r from-purple-700 via-indigo-600 to-cyan-500 px-3 py-1 text-xs font-black text-white shadow-sm">v2.0</span>
+      <span className="rounded-full bg-gradient-to-r from-purple-700 via-indigo-600 to-cyan-500 px-3 py-1 text-xs font-black text-white shadow-sm">v2.2</span>
     </header>
   );
 }
@@ -150,9 +155,9 @@ function InitialState() {
         </div>
         <h2 className="mt-7 text-2xl font-black tracking-normal">URLを入力して診断開始</h2>
         <p className="mx-auto mt-5 text-sm leading-7 text-slate-500">
-          WebページのSSL・ブラウザ保護設定・CMS公開リスクを
+          WebページのHTTPS・ブラウザ保護設定・公開ファイル・クライアントコードを
           <br />
-          まとめて自動チェックします。
+          読み取り専用アクセスだけで自動チェックします。
         </p>
         <div className="mx-auto mt-8 flex w-full max-w-4xl flex-wrap items-center justify-center gap-3">
           {categoryOrder.map((key) => (
@@ -214,6 +219,11 @@ function Report({
       <div className="flex min-h-16 items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 shadow-sm">
         <p className="text-sm text-slate-600">
           診断URL: <strong className="break-all text-slate-900">{report.finalUrl}</strong>
+          <span className="ml-3 text-xs text-slate-400">
+            公開パス {report.coverage.publicPathsChecked}件 / JS {report.coverage.clientScriptsChecked}件 / ソースマップ {report.coverage.sourceMapsChecked}件
+            {report.coverage.optionsChecked ? " / OPTIONS確認済み" : ""}
+            {report.coverage.unavailablePaths > 0 ? ` / 確認不能 ${report.coverage.unavailablePaths}件` : ""}
+          </span>
         </p>
         <div className="flex items-center gap-4">
           <time className="text-xs text-slate-400">{new Date(report.checkedAt).toLocaleString("ja-JP")}</time>
@@ -300,7 +310,7 @@ function ScoreCard({
       </p>
       <p className={`mt-1 text-base font-black ${scoreTextClass(category.score)}`}>{category.score}点</p>
       <p className="mt-1 text-[11px] text-slate-500">
-        {totalLabel || `✓${counts.pass} !${counts.warn} ×${counts.fail}`}
+        {totalLabel || `✓${counts.pass} !${counts.warn} ×${counts.fail} i${counts.info}`}
       </p>
     </div>
   );
@@ -392,10 +402,11 @@ function countStatuses(checks: SecurityCheck[]) {
 }
 
 function labelFor(key: SecurityCategoryKey) {
-  if (key === "ssl") return "SSL・HTTPS";
+  if (key === "ssl") return "HTTPS・通信";
   if (key === "browser") return "ブラウザ保護設定";
   if (key === "cms") return "WordPress・CMS設定";
   if (key === "server") return "サーバー公開情報";
+  if (key === "client") return "クライアントコード";
   return "フォーム・ドメイン信頼性";
 }
 
@@ -443,6 +454,9 @@ function formatReport(report: SecurityReport): string {
     "■ セキュリティ診断レポート",
     `URL: ${report.finalUrl}`,
     `診断日時: ${new Date(report.checkedAt).toLocaleString("ja-JP")}`,
+    `検査範囲: 公開パス ${report.coverage.publicPathsChecked}件 / JS ${report.coverage.clientScriptsChecked}件 / ソースマップ ${report.coverage.sourceMapsChecked}件 / OPTIONS ${report.coverage.optionsChecked ? "確認済み" : "確認不能"} / 確認不能 ${report.coverage.unavailablePaths}件`,
+    "方式: GET・HEAD・OPTIONSのみ。代表パスとJavaScriptの追加確認は最大52件・同時3件。",
+    "未実施: POST・PUT・PATCH・DELETE・TRACE、ログイン、フォーム送信、パラメータ改変、総当たり、認証回避、負荷試験。",
     "────────────────────────────────",
     "",
   ];
@@ -837,7 +851,9 @@ function buildReportHtml(report: SecurityReport) {
       <div class="url-card">
         <div class="url">診断URL: <strong>${escapeHtml(report.finalUrl)}</strong></div>
         <div class="date">診断日時: ${escapeHtml(new Date(report.checkedAt).toLocaleString("ja-JP"))}</div>
-        <div class="date">SSL・ブラウザ保護設定・WordPress/CMS・サーバー公開情報・フォーム/ドメイン信頼性の全${totalChecks}項目を診断しました。</div>
+        <div class="date">HTTPS・ブラウザ保護設定・WordPress/CMS・サーバー公開情報・クライアントコード・フォーム/ドメイン信頼性の全${totalChecks}項目を診断しました。</div>
+        <div class="date">検査範囲: 公開パス ${report.coverage.publicPathsChecked}件 / JS ${report.coverage.clientScriptsChecked}件 / ソースマップ ${report.coverage.sourceMapsChecked}件 / OPTIONS ${report.coverage.optionsChecked ? "確認済み" : "確認不能"} / 確認不能 ${report.coverage.unavailablePaths}件</div>
+        <div class="date">GET・HEAD・OPTIONSのみ。追加確認は最大52件・同時3件。状態変更メソッド、ログイン、フォーム送信、パラメータ改変、総当たり、認証回避、負荷試験は行いません。</div>
       </div>
     </section>
     <div class="section-title">スコアサマリー</div>
@@ -975,6 +991,16 @@ function NodesIcon(props: IconProps) {
       <path d="M8.6 7.5 10.8 15" />
       <path d="m15.4 7.5-2.2 7.5" />
       <path d="M9 6h6" />
+    </IconBase>
+  );
+}
+
+function CodeIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="m8 9-4 3 4 3" />
+      <path d="m16 9 4 3-4 3" />
+      <path d="m14 5-4 14" />
     </IconBase>
   );
 }

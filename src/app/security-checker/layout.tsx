@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "セキュリティ診断ツール (by Abeam Tech)",
-  description: "SSL・セキュリティヘッダー・WordPress/CMS・公開情報・フォーム保護をまとめて診断するチェックツールです。",
+  description: "GET・HEAD・OPTIONSの安全メソッドだけで、HTTPS・ヘッダー・CMS・公開情報・JavaScript・フォーム保護を簡易診断するツールです。",
 };
 
 export default function SecurityCheckerLayout({

@@ -10,7 +10,7 @@ const tools = [
   {
     name: "セキュリティ診断ツール",
     href: "/security-checker",
-    description: "SSL・セキュリティヘッダー・WordPress/CMS・公開情報・フォーム保護をまとめて診断します。",
+    description: "GET・HEAD・OPTIONSの安全メソッドだけで、HTTPS・ヘッダー・CMS・公開情報・クライアントコードを簡易診断します。",
     status: "公開準備中",
   },
   {
