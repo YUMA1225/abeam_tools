@@ -10,10 +10,11 @@ const MAX_HTML_BYTES = 2_000_000;
 const MAX_PROBE_BYTES = 96_000;
 const MAX_SCRIPT_BYTES = 240_000;
 const MAX_REDIRECTS = 5;
-const MAX_PROBE_REQUESTS = 52;
+// Keep total external fetches below Cloudflare Workers' free-plan per-request subrequest cap.
+const MAX_PROBE_REQUESTS = 32;
 const MAX_PROBE_CONCURRENCY = 3;
-const MAX_CLIENT_SCRIPTS = 8;
-const MAX_SOURCE_MAPS = 5;
+const MAX_CLIENT_SCRIPTS = 4;
+const MAX_SOURCE_MAPS = 3;
 const PROBE_DELAY_MS = 150;
 const MAX_API_BODY_BYTES = 16_384;
 const MAX_URL_LENGTH = 2_048;
@@ -21,6 +22,10 @@ const TARGET_COOLDOWN_MS = 20_000;
 const MAX_TRACKED_TARGETS = 500;
 const SCANNER_USER_AGENT = "AbeamSecurityChecker/2.2 (read-only; +https://abeam.tech/)";
 const recentTargetScans = new Map<string, number>();
+
+type ScanContext = {
+  resolvedHosts: Map<string, Promise<string[]>>;
+};
 
 export const dynamic = "force-dynamic";
 
@@ -50,13 +55,14 @@ export async function POST(request: Request) {
       return json({ ok: false, error: "同じホストへの連続診断を抑制しています。20秒ほど待ってから再度お試しください。" }, 429);
     }
 
+    const context = createScanContext();
     const response = await fetchPublicPage(targetUrl, {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       headers: {
         accept: "text/html,application/xhtml+xml",
         "user-agent": SCANNER_USER_AGENT,
       },
-    });
+    }, context);
 
     const contentType = response.headers.get("content-type") ?? "";
     const html = await readLimitedText(response, MAX_HTML_BYTES);
@@ -67,12 +73,12 @@ export async function POST(request: Request) {
 
     const finalUrl = response.url || targetUrl.toString();
     const [robotsTxt, probes, httpRedirect, dns, cors, httpMethods] = await Promise.all([
-      fetchRobots(finalUrl),
-      fetchSecurityProbes(finalUrl, html),
-      fetchHttpRedirect(targetUrl),
+      fetchRobots(finalUrl, context),
+      fetchSecurityProbes(finalUrl, html, context),
+      fetchHttpRedirect(targetUrl, context),
       fetchDnsSummary(new URL(finalUrl).hostname),
-      fetchCorsPolicy(finalUrl),
-      fetchHttpMethods(finalUrl),
+      fetchCorsPolicy(finalUrl, context),
+      fetchHttpMethods(finalUrl, context),
     ]);
 
     const report = analyzeSecurityHtml({
@@ -162,11 +168,15 @@ function reserveTargetScan(hostname: string): boolean {
   return true;
 }
 
-async function fetchPublicPage(targetUrl: URL, init: RequestInit): Promise<Response> {
+function createScanContext(): ScanContext {
+  return { resolvedHosts: new Map() };
+}
+
+async function fetchPublicPage(targetUrl: URL, init: RequestInit, context: ScanContext): Promise<Response> {
   let currentUrl = new URL(targetUrl);
 
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
-    await assertPublicUrl(currentUrl);
+    await assertPublicUrl(currentUrl, context);
     const response = await fetch(currentUrl, { ...init, method: "GET", redirect: "manual" });
     if (response.status < 300 || response.status >= 400) return response;
 
@@ -181,12 +191,12 @@ async function fetchPublicPage(targetUrl: URL, init: RequestInit): Promise<Respo
   throw new Error("Too many redirects");
 }
 
-async function assertPublicUrl(url: URL): Promise<void> {
+async function assertPublicUrl(url: URL, context: ScanContext): Promise<void> {
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || hasDisallowedPort(url) || isBlockedHost(url.hostname)) {
     throw new Error("Blocked URL");
   }
 
-  const addresses = await resolveHostAddresses(url.hostname);
+  const addresses = await resolveHostAddresses(url.hostname, context);
   if (addresses.length === 0) throw new Error("Unable to verify public address");
   if (addresses.some(isNonPublicIp)) throw new Error("Blocked private address");
 }
@@ -196,21 +206,26 @@ function hasDisallowedPort(url: URL): boolean {
     || (url.protocol === "http:" && Boolean(url.port) && url.port !== "80");
 }
 
-async function resolveHostAddresses(hostname: string): Promise<string[]> {
+async function resolveHostAddresses(hostname: string, context: ScanContext): Promise<string[]> {
   if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname) || hostname.includes(":")) return [hostname];
 
   try {
+    const cacheKey = hostname.toLowerCase();
+    const cached = context.resolvedHosts.get(cacheKey);
+    if (cached) return await cached;
+
     const url = new URL("https://dns.google/resolve");
     url.searchParams.set("name", hostname);
     url.searchParams.set("type", "A");
     const ipv6Url = new URL(url);
     ipv6Url.searchParams.set("type", "AAAA");
 
-    const [ipv4, ipv6] = await Promise.all([
+    const request = Promise.all([
       fetchDnsAnswers(url),
       fetchDnsAnswers(ipv6Url),
-    ]);
-    return [...ipv4, ...ipv6];
+    ]).then(([ipv4, ipv6]) => [...ipv4, ...ipv6]);
+    context.resolvedHosts.set(cacheKey, request);
+    return await request;
   } catch {
     return [];
   }
@@ -261,12 +276,12 @@ function concatChunks(chunks: Uint8Array[], size: number): Uint8Array {
   return merged;
 }
 
-async function fetchRobots(finalUrl: string): Promise<string> {
+async function fetchRobots(finalUrl: string, context: ScanContext): Promise<string> {
   try {
     const url = new URL(finalUrl);
     if (isBlockedHost(url.hostname)) return "";
     const robotsUrl = new URL("/robots.txt", url.origin);
-    await assertPublicUrl(robotsUrl);
+    await assertPublicUrl(robotsUrl, context);
     const response = await fetch(robotsUrl, {
       method: "GET",
       redirect: "manual",
@@ -280,13 +295,13 @@ async function fetchRobots(finalUrl: string): Promise<string> {
   }
 }
 
-async function fetchHttpRedirect(targetUrl: URL): Promise<AnalyzeRedirect | null> {
+async function fetchHttpRedirect(targetUrl: URL, context: ScanContext): Promise<AnalyzeRedirect | null> {
   if (targetUrl.protocol !== "https:") return null;
 
   try {
     const httpUrl = new URL(targetUrl.toString());
     httpUrl.protocol = "http:";
-    await assertPublicUrl(httpUrl);
+    await assertPublicUrl(httpUrl, context);
     let response = await fetch(httpUrl, {
       method: "HEAD",
       redirect: "manual",
@@ -324,9 +339,9 @@ type AnalyzeRedirect = {
   redirectedToHttps: boolean;
 };
 
-async function fetchSecurityProbes(finalUrl: string, html: string): Promise<ProbeResult[]> {
+async function fetchSecurityProbes(finalUrl: string, html: string, context: ScanContext): Promise<ProbeResult[]> {
   const base = new URL(finalUrl);
-  await assertPublicUrl(base);
+  await assertPublicUrl(base, context);
   const notFoundPath = `/.security-checker-not-found-${crypto.randomUUID()}`;
   const fixedPaths = [
     ["not-found-baseline", notFoundPath],
@@ -370,10 +385,16 @@ async function fetchSecurityProbes(finalUrl: string, html: string): Promise<Prob
     ["api-docs-swagger", "/swagger.json"],
   ] as const;
   const clientScriptTargets = getClientScriptUrls(html, base).map((url, index) => [`client-script-${index}`, url] as const);
-  const fixedRequestBudget = MAX_PROBE_REQUESTS - MAX_SOURCE_MAPS - MAX_CLIENT_SCRIPTS;
+  const fixedRequestBudget = Math.max(0, MAX_PROBE_REQUESTS - MAX_SOURCE_MAPS - clientScriptTargets.length);
+  const fixedTargets = fixedPaths
+    .slice(0, fixedRequestBudget)
+    .map(([id, path]) => [id, new URL(path, base).toString()] as const);
+  const coreFixedTargets = fixedTargets.slice(0, 3);
+  const remainingFixedTargets = fixedTargets.slice(3);
   const initialTargets = [
-    ...fixedPaths.slice(0, fixedRequestBudget).map(([id, path]) => [id, new URL(path, base).toString()] as const),
+    ...coreFixedTargets,
     ...clientScriptTargets,
+    ...remainingFixedTargets,
   ];
 
   const initialResults = await mapWithConcurrency(initialTargets, MAX_PROBE_CONCURRENCY, ([id, url]) => probeUrl(id, url));
@@ -500,7 +521,7 @@ async function probeUrl(id: string, url: string): Promise<ProbeResult> {
   }
 }
 
-async function fetchCorsPolicy(finalUrl: string): Promise<{ checked: boolean; allowOrigin: string; allowCredentials: string; vary: string }> {
+async function fetchCorsPolicy(finalUrl: string, context: ScanContext): Promise<{ checked: boolean; allowOrigin: string; allowCredentials: string; vary: string }> {
   try {
     const response = await fetchPublicPage(new URL(finalUrl), {
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
@@ -509,7 +530,7 @@ async function fetchCorsPolicy(finalUrl: string): Promise<{ checked: boolean; al
         origin: "https://security-checker.invalid",
         "user-agent": SCANNER_USER_AGENT,
       },
-    });
+    }, context);
     const result = {
       checked: true,
       allowOrigin: response.headers.get("access-control-allow-origin") ?? "",
@@ -523,10 +544,10 @@ async function fetchCorsPolicy(finalUrl: string): Promise<{ checked: boolean; al
   }
 }
 
-async function fetchHttpMethods(finalUrl: string): Promise<{ checked: boolean; status: number; allow: string }> {
+async function fetchHttpMethods(finalUrl: string, context: ScanContext): Promise<{ checked: boolean; status: number; allow: string }> {
   try {
     const url = new URL(finalUrl);
-    await assertPublicUrl(url);
+    await assertPublicUrl(url, context);
     const response = await fetch(url, {
       method: "OPTIONS",
       redirect: "manual",

@@ -177,6 +177,17 @@ test("known sensitive configuration signatures are treated as exposed", () => {
   assert.equal(findCheck(report, "sensitive-files").status, "fail");
 });
 
+test("unavailable sensitive probes are warnings rather than full-credit info", () => {
+  const report = analyze({
+    probes: [
+      probe("env-backup", "", { status: 0, ok: false, contentType: "" }),
+    ],
+  });
+  const sensitiveFiles = findCheck(report, "sensitive-files");
+  assert.equal(sensitiveFiles.status, "warn");
+  assert.equal(sensitiveFiles.weight, 2);
+});
+
 test("high-risk public JavaScript token patterns are detected", () => {
   const report = analyze({
     html: '<!doctype html><title>Example</title><script>const token = "ghp_abcdefghijklmnopqrstuvwxyzABCDEFGHIJ";</script>',

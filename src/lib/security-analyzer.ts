@@ -182,8 +182,13 @@ export function analyzeSecurityHtml(input: AnalyzeInput): SecurityReport {
     : sensitiveAssessment.inconclusive.length > 0
       ? "warn"
       : sensitiveAssessment.unavailable.length > 0
-        ? "info"
+        ? "warn"
         : "pass";
+  const sensitiveWeight = sensitiveAssessment.unavailable.length > 0
+    && sensitiveAssessment.exposed.length === 0
+    && sensitiveAssessment.inconclusive.length === 0
+    ? 2
+    : 5;
   const sensitiveDetail = sensitiveAssessment.exposed.length > 0
     ? `${sensitiveAssessment.exposed.length}件で機密ファイル固有の内容を検出しました`
     : sensitiveAssessment.inconclusive.length > 0
@@ -253,7 +258,7 @@ export function analyzeSecurityHtml(input: AnalyzeInput): SecurityReport {
         sensitiveDetail,
         sensitiveAssessment.detail,
         "実ファイルが公開されている場合は直ちに非公開化し、認証情報や秘密鍵をローテーションしてください。",
-        5,
+        sensitiveWeight,
       ),
       check("api-docs", "公開API仕様", apiDocsAssessment.status, apiDocsAssessment.detail, apiDocsAssessment.value, "公開自体は脆弱性ではありません。非公開APIや管理操作、内部情報を含めていないか確認してください。", apiDocsAssessment.weight),
       check("security-txt", "security.txt", securityTxtAssessment.status, securityTxtAssessment.detail, securityTxtAssessment.value, "RFC 9116に沿って/.well-known/security.txtへContactと有効なExpiresを掲載してください。", securityTxtAssessment.weight),
