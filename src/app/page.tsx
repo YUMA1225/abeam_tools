@@ -20,6 +20,12 @@ const tools = [
     status: "ブラウザ内処理",
   },
   {
+    name: "PDF結合ツール",
+    href: "/pdf-merger",
+    description: "複数PDFを並べ替え、ページ範囲や回転を指定して1つのPDFに結合します。",
+    status: "ブラウザ内処理",
+  },
+  {
     name: "Markdown表 → Excel変換",
     href: "/markdown-table-converter",
     description: "Markdown形式の表をExcelやスプレッドシートへ貼り付けやすい形式に変換します。",
@@ -58,6 +64,13 @@ export default function ToolsHome() {
                       <circle cx="6" cy="17" r="3" />
                       <path d="M8.6 8.6 19 19" />
                       <path d="M8.6 15.4 19 5" />
+                    </svg>
+                  ) : tool.href === "/pdf-merger" ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M7 4v16" />
+                      <path d="M17 4v16" />
+                      <path d="M7 8h4a4 4 0 0 1 4 4 4 4 0 0 0 4 4h-2" />
+                      <path d="m17 13 3 3-3 3" />
                     </svg>
                   ) : tool.href === "/markdown-table-converter" ? (
                     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
