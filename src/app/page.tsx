@@ -31,6 +31,12 @@ const tools = [
     description: "Markdown形式の表をExcelやスプレッドシートへ貼り付けやすい形式に変換します。",
     status: "ブラウザ内処理",
   },
+  {
+    name: "ラウドネス",
+    href: "/loudness",
+    description: "動画・音声ファイルのLUFSを解析し、YouTube/TikTokなどに合わせて音量を最適化します。",
+    status: "ブラウザ内処理",
+  },
 ];
 
 export default function ToolsHome() {
@@ -76,6 +82,14 @@ export default function ToolsHome() {
                     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="4" width="18" height="16" rx="2" />
                       <path d="M3 10h18M9 4v16" />
+                    </svg>
+                  ) : tool.href === "/loudness" ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 13v-2" />
+                      <path d="M8 17V7" />
+                      <path d="M12 20V4" />
+                      <path d="M16 16V8" />
+                      <path d="M20 13v-2" />
                     </svg>
                   ) : (
                     <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
