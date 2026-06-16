@@ -16,7 +16,7 @@ export type SeoCategoryKey =
   | "structured"
   | "technical"
   | "meo"
-  | "llmo";
+  | "aio";
 
 export type SeoCategory = {
   key: SeoCategoryKey;

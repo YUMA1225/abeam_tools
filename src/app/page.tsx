@@ -2,9 +2,9 @@ import Link from "next/link";
 
 const tools = [
   {
-    name: "LLMOチェッカー",
+    name: "AIOチェッカー",
     href: "/llmo-checker",
-    description: "SEO・OGP・構造化データ・MEO・LLMOをまとめて診断します。",
+    description: "SEO・OGP・構造化データ・MEO・AIOをまとめて診断します。",
     status: "公開準備中",
   },
   {

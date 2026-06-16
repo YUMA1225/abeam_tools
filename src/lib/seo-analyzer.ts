@@ -31,7 +31,7 @@ const CATEGORY_LABELS: Record<SeoCategoryKey, string> = {
   ogp: "OGP/SNS",
   structured: "構造化データ",
   meo: "MEO",
-  llmo: "LLMO（AI最適化）",
+  aio: "AIO（AI最適化）",
 };
 
 export function analyzeHtml(input: AnalyzeInput): SeoReport {
@@ -144,9 +144,9 @@ export function analyzeHtml(input: AnalyzeInput): SeoReport {
       check("hasmap", "Google Maps URL（hasMap）", local?.hasMap ? "pass" : "info", stringValue(local?.hasMap) || "未設定", "Google MapsのURLをhasMapに設定すると関連性が強化されます。", local?.hasMap ? 1 : 0),
       check("rating", "評価（aggregateRating）", local?.aggregateRating ? "pass" : "info", local?.aggregateRating ? textValue(local.aggregateRating) : "未設定", "評価スキーマを設定すると検索結果に★評価が表示されることがあります。", local?.aggregateRating ? 1 : 0),
     ]),
-    category("llmo", [
+    category("aio", [
       check("content-structure", "コンテンツ構造の明確さ", headingCounts.h2 > 0 && paragraphs > 0 ? "pass" : "warn", `H2: ${headingCounts.h2}個 / H3: ${headingCounts.h3}個 / 段落: ${paragraphs}個 / 推定文字数: 約${text.length.toLocaleString("ja-JP")}字`, "AIが要約しやすいよう、見出しと段落で論点を整理してください。", 3),
-      check("faq-llmo", "FAQPage スキーマ（LLM回答に重要）", faq ? "pass" : "warn", faq ? `${faqCount}件のFAQ` : "未設定", "FAQPageスキーマを設定するとAI回答に引用されやすくなります。", 2),
+      check("faq-aio", "FAQPage スキーマ（AI回答に重要）", faq ? "pass" : "warn", faq ? `${faqCount}件のFAQ` : "未設定", "FAQPageスキーマを設定するとAI回答に引用されやすくなります。", 2),
       check("howto", "HowTo スキーマ", howTo ? "pass" : "info", howTo ? `HowTo: ${stringValue(howTo.name)}` : "未設定（手順コンテンツは追加推奨）", "HowToスキーマを設定するとAI検索エンジンが手順を正確に引用しやすくなります。", howTo ? 1 : 0),
       check("author", "著者情報（Person / meta author）", author ? "pass" : "warn", author || "未設定", "著者情報を設定してください。", 2),
       check("dates", "公開日・更新日", dates ? "pass" : "warn", dates || "未設定", "公開日・更新日を明記してください。", 2),

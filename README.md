@@ -1,6 +1,6 @@
-# llmo-checker
+# aio-checker
 
-Next.js で作る LLMO / SEO チェックツールです。
+Next.js で作る AIO / SEO チェックツールです。
 
 ## Development
 
