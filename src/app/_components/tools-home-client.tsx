@@ -45,15 +45,9 @@ const tools = [
   },
 ];
 
-export default function ToolsHomeClient({
-  initialUnlocked = false,
-  clientIp = "",
-}: {
-  initialUnlocked?: boolean;
-  clientIp?: string;
-}) {
+export default function ToolsHomeClient() {
   const [password, setPassword] = useState("");
-  const [isUnlocked, setIsUnlocked] = useState(initialUnlocked);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [error, setError] = useState("");
 
   function handleUnlock(event: FormEvent<HTMLFormElement>) {
@@ -97,11 +91,6 @@ export default function ToolsHomeClient({
               一覧を表示
             </button>
           </form>
-          {clientIp ? (
-            <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">
-              接続元IP: <span className="font-black text-slate-700">{clientIp}</span>
-            </p>
-          ) : null}
         </section>
       </main>
     );
