@@ -8,12 +8,14 @@ export default async function ToolsHome() {
   const clientIp = getClientIp(requestHeaders);
   const isAllowedIp = clientIp ? getAllowedIps().includes(normalizeIp(clientIp)) : false;
 
-  return <ToolsHomeClient initialUnlocked={isAllowedIp} />;
+  return <ToolsHomeClient initialUnlocked={isAllowedIp} clientIp={clientIp} />;
 }
 
 function getClientIp(requestHeaders: Headers) {
   const candidates = [
     requestHeaders.get("cf-connecting-ip"),
+    requestHeaders.get("cf-connecting-ipv6"),
+    requestHeaders.get("true-client-ip"),
     requestHeaders.get("x-real-ip"),
     requestHeaders.get("x-forwarded-for")?.split(",")[0],
     requestHeaders.get("forwarded")?.match(/for="?([^;,"]+)/i)?.[1],
@@ -30,5 +32,10 @@ function getAllowedIps() {
 }
 
 function normalizeIp(value: string) {
-  return value.trim().replace(/^\[|\]$/g, "").replace(/^::ffff:/i, "");
+  return value
+    .trim()
+    .replace(/^TOOLS_ALLOWLIST_IPS=/, "")
+    .replace(/^["']|["']$/g, "")
+    .replace(/^\[|\]$/g, "")
+    .replace(/^::ffff:/i, "");
 }

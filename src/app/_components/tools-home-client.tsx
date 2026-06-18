@@ -45,7 +45,13 @@ const tools = [
   },
 ];
 
-export default function ToolsHomeClient({ initialUnlocked = false }: { initialUnlocked?: boolean }) {
+export default function ToolsHomeClient({
+  initialUnlocked = false,
+  clientIp = "",
+}: {
+  initialUnlocked?: boolean;
+  clientIp?: string;
+}) {
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(initialUnlocked);
   const [error, setError] = useState("");
@@ -91,6 +97,11 @@ export default function ToolsHomeClient({ initialUnlocked = false }: { initialUn
               一覧を表示
             </button>
           </form>
+          {clientIp ? (
+            <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">
+              接続元IP: <span className="font-black text-slate-700">{clientIp}</span>
+            </p>
+          ) : null}
         </section>
       </main>
     );
